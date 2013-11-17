@@ -1,0 +1,9 @@
+Private-Package: no.ntnu.ttm3.ithouse.central
+Service-Component: *
+-buildpath: osgi.core,\
+	osgi.cmpn,\
+	biz.aQute.bnd.annotation,\
+	junit.osgi,\
+	hydna-ntnu-student-bundle;version=latest
+Bundle-Version: 1.0.0
+-runfw: org.apache.felix.framework;version='[4.0.3,4.0.3]'
