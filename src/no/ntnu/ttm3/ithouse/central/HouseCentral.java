@@ -3,6 +3,7 @@ package no.ntnu.ttm3.ithouse.central;
 import java.util.ArrayList;
 import java.util.Iterator;
 
+import no.ntnu.ttm3.ithouse.gui.HouseManagerGUI;
 import no.ntnu.ttm3.ithouse.sensor.Heater;
 import no.ntnu.ttm3.ithouse.sensor.Room;
 import no.ntnu.ttm3.ithouse.sensor.SoundSensor;
@@ -27,7 +28,8 @@ public class HouseCentral {
 	public ArrayList<HeatService> heatServiceList = new ArrayList<HeatService>();
 	private Channel registerationChannel;
 	private Channel sensorDataChannel;
-	//private Channel adminChannel;
+	private Channel adminChannel;
+	private HouseManagerGUI gui;
 	
 	
 	private double defalutTemperatureThreshold = 22.0;
@@ -44,12 +46,12 @@ public class HouseCentral {
 		sensorDataChannel = new Channel();
 		sensorDataChannel.connect(DOMAIN + "sensorData", ChannelMode.READWRITE);
 		
-		//adminChannel = new Channel();
-		//adminChannel.connect(DOMAIN + "adminControll", ChannelMode.READWRITE);
+		adminChannel = new Channel();
+		adminChannel.connect(DOMAIN + "adminControll", ChannelMode.READWRITE);
 		
 		channelList.add(registerationChannel);
 		channelList.add(sensorDataChannel);
-		//channelList.add(adminChannel);
+		channelList.add(adminChannel);
 		
 	    while(true){
 	    	
@@ -98,7 +100,7 @@ public class HouseCentral {
 		    		}
 		    		/*
 		    		 * adminControll channel to change the sensor threshold
-		    		 * 
+		    		  
 		    		 else if(tempChannel.getPath().endsWith("adminControll")){// configure central administrator settings
 		    			
 		    			//configure message format <setting type>:<settings object>:<setting value>
@@ -108,16 +110,15 @@ public class HouseCentral {
 		    			while(heats.hasNext()){
 		    				HeatService tempService = heats.next();
 		    				
-		    				if(message[2].equals("All")){
-			    				settingCommand(tempService,);
-			    			}else{
-			    				
-			    			}
-
+		    				if(message[2].equals("ALL") || tempService.getRoom().getRoomId().equals(message[2]))
+		    				{
+			    				settingCommand(tempService,message[1],message[3]);
+		    				}
 		    			}
 		    			
 		    		}
 		    		*/
+		    		
 		    	}
 		    }
 	    }
@@ -127,11 +128,13 @@ public class HouseCentral {
 	public void setHydnaApi(HydnaApi hydna) {
 		System.out.println("SETTING SERVICSE");
 		this.hydnaSvc = hydna;
+		this.gui = new HouseManagerGUI(this);
 	}
 	
 	private void registerFeedback(HeatService service){
 		try {
-			service.getServiceChannel().send(service.getHeater().getHeaterId() + " registered");
+			registerationChannel.send(service.getHeater().getHeaterId() + ":registered:" + service.getServiceChannel().getPath());
+			this.gui.addNewService(service.getRoom().getRoomId(), service.getHeater().getHeaterId());
 		} catch (ChannelError e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -146,7 +149,7 @@ public class HouseCentral {
 			
 			if(sThreshold > current){
 				try {
-					service.getServiceChannel().send("stop");
+					service.getServiceChannel().send("HeaterControll:stop");
 				} catch (ChannelError e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -161,20 +164,41 @@ public class HouseCentral {
 			if(service.getRoom().getsSensor().getCurrentValue() > sThreshold){
 				if(tThreshold > current){
 					try {
-						service.getServiceChannel().send("heating");
+						service.getServiceChannel().send("HeaterControl:heating");
 					} catch (ChannelError e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}else{
 					try {
-						service.getServiceChannel().send("stop");
+						service.getServiceChannel().send("HeaterControl:stop");
 					} catch (ChannelError e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}
 			}
+		}
+	}
+	
+	private void settingCommand(HeatService service,String sensorType, String threshold){
+		try {
+			adminChannel.send(service.getRoom().getRoomId() + ":" + sensorType + ":" + threshold);
+		} catch (ChannelError e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public void boardcastSettings(String temperatureThreshold, String soundThreshold){
+		Iterator<HeatService> heats = heatServiceList.iterator();
+		
+		while(heats.hasNext()){
+			HeatService tempService = heats.next();
+			
+			settingCommand(tempService,"TemperatureThreshold",temperatureThreshold);
+			settingCommand(tempService,"SoundThreshold",soundThreshold);
+			
 		}
 	}
 }

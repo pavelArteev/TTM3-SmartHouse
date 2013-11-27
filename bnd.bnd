@@ -1,4 +1,7 @@
-Private-Package: no.ntnu.ttm3.ithouse.central
+Private-Package: no.ntnu.ttm3.ithouse.central,\
+	no.ntnu.ttm3.ithouse.gui,\
+	no.ntnu.ttm3.ithouse.sensor,\
+	no.ntnu.ttm3.ithouse.simulator
 Service-Component: *
 -buildpath: osgi.core,\
 	osgi.cmpn,\
